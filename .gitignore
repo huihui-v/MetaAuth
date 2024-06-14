@@ -1,0 +1,37 @@
+# Node modules
+node_modules/
+
+# Truffle build directory
+build/
+
+# Truffle artifacts
+*.json
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+*.pid
+*.seed
+*.pid.lock
+
+# MacOS files
+.DS_Store
+
+# Windows files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment variables
+.env
+
+# Yarn lock file
+yarn.lock
+
+# Truffle configuration
+# truffle-config.js
+
+# Solidity coverage
+coverage/
+coverage.json
