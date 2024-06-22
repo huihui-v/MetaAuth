@@ -49,6 +49,9 @@
 
 // const agent = new httpsProxyAgent("http://172.22.160.1:7890");
 
+const { Web3, WebSocketProvider } = require('web3');
+// import Web3 from 'web3';
+
 module.exports = {
   /**
    * Networks define how you connect to your ethereum client and let you set the
@@ -101,9 +104,9 @@ module.exports = {
     // }
 
     development: {
-      // host: "127.0.0.1",
       host: "172.22.160.1",
       port: 7545,
+      // provider: () => new Web3("ws://172.22.160.1:7545"),
       network_id: "*",
     },
   },
@@ -128,6 +131,7 @@ module.exports = {
       // settings: {
       //   agent: agent
       // },
+      settings: { evmVersion: "london" },
     }
   },
 
