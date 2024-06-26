@@ -13,10 +13,8 @@ contract MetaAuth_OTP {
     }
 
     struct ServiceInfo {
-        bool isHanging;
         bool isAuthorized;
-        bool isBaned;
-        uint256 requestTime;
+        uint256 authorizeTime;
         uint256 expirationTime;
     }
 
@@ -35,49 +33,69 @@ contract MetaAuth_OTP {
         bool isRegistered;
         uint256 requestCount;
         uint256 lastRequestTime;
+        mapping(bytes32 => uint256) challengeExpirationTime; 
     }
 
-    mapping(address => User) public users;
+    // mapping(address => User) public users;
+    mapping(string => User) public users_pk_view;
+    mapping(address => bool) public registeredUsers;
     mapping(address => ServiceProvider) public serviceProviders;
+
+    address contractOwner;
+
+    constructor () {
+        contractOwner = msg.sender;
+    }
 
     // uint256 public = 10;
 
     event UserRegistered(address indexed userAddress);
     event ServiceProviderRegistered(address indexed serviceProviderAddress);
-    event OTPGenerated(address indexed userAddress, address indexed serviceProviderAddress);
-    event OTPVerified(address indexed userAddress, address indexed serviceProviderAddress, bool isValid);
-    event OTPAbuse(address indexed userAddress, address indexed serviceProviderAddress, string abuseCode);
-    event ServiceConnectionRequested(address indexed userAddress, address indexed serviceProviderAddress);
-    event ServiceConnectionResolved(address indexed userAddress, address indexed serviceProviderAddress, bool auth, bool ban);
 
-    modifier onlyRegisteredUser() {
-        require(users[msg.sender].isRegistered, "User not registered");
+    event ServiceConnected(string publicKey, address indexed serviceProviderAddress, uint256 authorizeTime, string signature);
+    event OTPGenerated(string publicKey, address indexed serviceProviderAddress);
+    event OTPVerified(string publicKey, address indexed serviceProviderAddress, bool isValid);
+    event OTPAbuse(string publicKey, address indexed serviceProviderAddress, string abuseCode);
+
+
+    modifier onlyRegisteredUser(address addr) {
+        require(registeredUsers[addr], "User not registered");
         _;
     }
 
-    modifier onlyRegisteredServiceProvider() {
-        require(serviceProviders[msg.sender].isRegistered, "Service provider not registered");
+    modifier onlyRegisteredServiceProvider(address addr) {
+        require(serviceProviders[addr].isRegistered, "Service provider not registered");
         _;
     }
 
-    function registerUser(string memory publicKey) external {
-        require(!users[msg.sender].isRegistered, "User already registered");
+    modifier onlyOwner() {
+        require(msg.sender==contractOwner, "Caller required to be contract owner");
+        _;
+    }
 
-        User storage newUser = users[msg.sender];
-        newUser.userAddress = msg.sender;
+    function registerUser(string memory publicKey, address userAddress) external onlyOwner {
+        // require(!users[msg.sender].isRegistered, "User already registered");
+        require(!users_pk_view[publicKey].isRegistered, "User public key already registered");
+
+        // User storage newUser = users[msg.sender];
+        User storage newUser = users_pk_view[publicKey];
+        newUser.userAddress = userAddress;
         newUser.publicKey = publicKey;
 
         newUser.isRegistered = true;
+        registeredUsers[userAddress] = true;
 
         emit UserRegistered(msg.sender);
     }
 
-    function getServiceInfo(address service) public view returns (ServiceInfo memory) {
-        return users[msg.sender].serviceInfos[service];
+    function getServiceInfo(string memory publicKey, address service) public view onlyRegisteredUser returns (ServiceInfo memory) {
+        require(users_pk_view[publicKey].userAddress==msg.sender, "Only owner of this pk can read service info list.");        
+        return users_pk_view[publicKey].serviceInfos[service];
     }
 
-    function getOTPInfo(address service) public view returns (OTPInfo memory) {
-        return users[msg.sender].otps[service];
+    function getOTPInfo(string memory publicKey, address service) public view onlyRegisteredUser returns (OTPInfo memory) {
+        require(users_pk_view[publicKey].userAddress==msg.sender, "Only owner of this pk can read OTP list.");
+        return users_pk_view[publicKey].otps[service];
     }
 
 
@@ -93,57 +111,42 @@ contract MetaAuth_OTP {
         emit ServiceProviderRegistered(msg.sender);
     }
 
-    // Request to serve a user
-    function requestServiceConnection(address userAddress) external onlyRegisteredServiceProvider {
-        require(users[userAddress].isRegistered, "User not registered");
 
-        ServiceInfo storage _serviceInfo = users[userAddress].serviceInfos[msg.sender];
-        
-        require(_serviceInfo.isBaned==false, "The service had been banned by the user");
-        require(_serviceInfo.isAuthorized==false || block.timestamp > _serviceInfo.expirationTime, "A valid auth exists");
-        require(_serviceInfo.isHanging==false || block.timestamp > _serviceInfo.expirationTime, "A valid request is still hanging");
-        // require(_serviceInfo.)
-
-        
-        _serviceInfo.isHanging = true;
-        _serviceInfo.isAuthorized = false;
-        _serviceInfo.isBaned = false;
-        _serviceInfo.requestTime = block.timestamp;
-        _serviceInfo.expirationTime = block.timestamp + 5 minutes;
-
-        emit ServiceConnectionRequested(userAddress, msg.sender);
+    // Opening challenge called by service
+    function openChallenge(bytes32 challenge) external onlyRegisteredServiceProvider(msg.sender) {
+        serviceProviders[msg.sender].challengeExpirationTime[challenge] = block.timestamp + 15 minutes;
     }
 
-    // Respond to auth the service, refuse the connection or ban the service
-    function respondServiceConnection(address serviceProviderAddress, bool auth, bool ban) external onlyRegisteredUser {
-        require(serviceProviders[serviceProviderAddress].isRegistered, "Service provider not registered");
-        
-        ServiceInfo storage _serviceInfo = users[msg.sender].serviceInfos[serviceProviderAddress];
+    // Register service called by user, emit event to tell service
+    function connectService(string memory publicKey, address serviceProviderAddress, string memory challenge, string memory signature) external 
+    onlyOwner onlyRegisteredUser(publicKey) onlyRegisteredServiceProvider(serviceProviderAddress) {
+        ServiceInfo storage _serviceInfo = users_pk_view[publicKey].serviceInfos[serviceProviderAddress];
 
-        require(_serviceInfo.isHanging==true && block.timestamp<_serviceInfo.expirationTime, "No valid request is hanging");
-        
-        _serviceInfo.isHanging = false;
-        if (auth) {
-            _serviceInfo.isAuthorized = true;
-            _serviceInfo.expirationTime = block.timestamp + 365 days;
-        } else {
-            if (ban) { _serviceInfo.isBaned = true; }
-        }
+        require(serviceProviders[serviceProviderAddress].challengeExpirationTime[sha256(abi.encodePacked(challenge))]>block.timestamp, "No valid opening challenge on this service");
 
-        emit ServiceConnectionResolved(msg.sender, serviceProviderAddress, auth, ban);
+        require(_serviceInfo.isAuthorized==false||block.timestamp>_serviceInfo.expirationTime, "Connection is still valid");
+
+        _serviceInfo.isAuthorized = true;
+        _serviceInfo.authorizeTime = block.timestamp;
+        _serviceInfo.expirationTime = block.timestamp + 180 days;
+
+        emit ServiceConnected(publicKey, serviceProviderAddress, _serviceInfo.authorizeTime, signature);
     }
 
 
     // Generate new OTP called by user
-    function generateOTP(address serviceProviderAddress, uint256 salt) public onlyRegisteredUser {
-        require(serviceProviders[serviceProviderAddress].isRegistered, "Service provider not registered");
+    function generateOTP(string memory publicKey, address serviceProviderAddress, uint256 salt, string memory signature) public 
+    onlyOwner onlyRegisteredUser(publicKey) onlyRegisteredServiceProvider(serviceProviderAddress) {
+        // require(serviceProviders[serviceProviderAddress].isRegistered, "Service provider not registered");
         require(
-            users[msg.sender].serviceInfos[serviceProviderAddress].isAuthorized || 
-            users[msg.sender].serviceInfos[serviceProviderAddress].expirationTime < block.timestamp
+            users_pk_view[publicKey].serviceInfos[serviceProviderAddress].isAuthorized || 
+            users_pk_view[publicKey].serviceInfos[serviceProviderAddress].expirationTime < block.timestamp
             , "Service provider is not authorized or expired"
         );
 
-        OTPInfo storage otpInfo = users[msg.sender].otps[serviceProviderAddress];
+        // Need user signature here to verify the otp generation call
+
+        OTPInfo storage otpInfo = users_pk_view[publicKey].otps[serviceProviderAddress];
 
         require(block.timestamp > otpInfo.expirationTime || otpInfo.isUsed, "Existing OTP is still valid");
 
@@ -152,29 +155,30 @@ contract MetaAuth_OTP {
         otpInfo.expirationTime = block.timestamp + 5 minutes; // OTP valid for 5 minutes
         otpInfo.isUsed = false;
 
-        emit OTPGenerated(userAddress, serviceProviderAddress);
+        emit OTPGenerated(publicKey, serviceProviderAddress);
     }
 
     // Verify OTP called by service provider
-    function verifyOTP(address userAddress, uint256 otp) external onlyRegisteredServiceProvider {
-        require(users[userAddress].isRegistered, "User not registered");
+    function verifyOTP(string memory publicKey, uint256 otp) external 
+    onlyOwner onlyRegisteredUser(publicKey) onlyRegisteredServiceProvider(msg.sender) {
+        // require(users[userAddress].isRegistered, "User not registered");
         require(
-            users[userAddress].serviceInfos[msg.sender].isAuthorized || 
-            users[userAddress].serviceInfos[msg.sender].expirationTime < block.timestamp
+            users_pk_view[publicKey].serviceInfos[msg.sender].isAuthorized || 
+            users_pk_view[publicKey].serviceInfos[msg.sender].expirationTime > block.timestamp
             , "Service provider is not authorized or expired"
         );
 
 
-        OTPInfo storage otpInfo = users[userAddress].otps[msg.sender];
+        OTPInfo storage otpInfo = users_pk_view[publicKey].otps[msg.sender];
 
         if (block.timestamp > otpInfo.expirationTime || otpInfo.isUsed) {
-            emit OTPAbuse(userAddress, msg.sender, "UNAUTHORIZED_TRY");
+            emit OTPAbuse(publicKey, msg.sender, "UNAUTHORIZED_TRY");
         } else if (otpInfo.otp != otp) {
             otpInfo.isUsed = true;
-            emit OTPAbuse(userAddress, msg.sender, "WRONG_ANSWER");
+            emit OTPAbuse(publicKey, msg.sender, "WRONG_ANSWER");
         } else {
             otpInfo.isUsed = true;
-            emit OTPVerified(userAddress, msg.sender, true);
+            emit OTPVerified(publicKey, msg.sender, true);
         }
 
     }

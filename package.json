@@ -1,0 +1,27 @@
+{
+  "dependencies": {
+    "@metamask/detect-provider": "^2.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "elliptic": "^6.5.5",
+    "https-proxy-agent": "^7.0.4",
+    "web3": "^4.10.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "web-vitals": "^4.2.0"
+  },
+  "workspaces": [
+    "metaauth_client",
+    "metaauth_server"
+  ],
+  "scripts": {
+    "start:client": "npm start --prefix metaauth_client",
+    "start:server": "npm start --prefix metaauth_server",
+    "start": "concurrently \"npm run start:client\" \"npm run start:server\"",
+    "dev:client": "npm run dev --prefix metaauth_client",
+    "dev:server": "npm run dev --prefix metaauth_server",
+    "dev": "concurrently -c cyan,yellow \"npm run dev:client\" \"npm run dev:server\"",
+    "test": "truffle test",
+    "migrate": "truffle migrate --reset"
+  }
+}

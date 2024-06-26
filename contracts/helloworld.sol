@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.17;
+pragma solidity ^0.8.17;
 
 contract HelloWorld {
   string public message;
@@ -8,7 +8,7 @@ contract HelloWorld {
 
   // }
 
-  constructor(string memory initMessage) public {
+  constructor(string memory initMessage)  {
     message = initMessage;
     // message = "Hello";
   }

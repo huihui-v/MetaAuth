@@ -1,0 +1,6 @@
+{
+    "watch": ["."],
+    "ext": "js,jsx,ts,tsx,css,html,json",
+    "exec": "npm start",
+    "verbose": true
+}
