@@ -20,7 +20,7 @@ contract MetaAuth_OTP {
 
     struct User {
         address userAddress;
-        bytes publicKey;
+        address publicKey;
         bool isRegistered;
         mapping(address => OTPInfo) otps; // Keyed by service provider address
         mapping(address => ServiceInfo) serviceInfos;
@@ -29,7 +29,7 @@ contract MetaAuth_OTP {
     struct ServiceProvider {
         address serviceProviderAddress;
         // string name;
-        bytes publicKey;
+        address publicKey;
         bool isRegistered;
         uint256 requestCount;
         uint256 lastRequestTime;
@@ -37,7 +37,7 @@ contract MetaAuth_OTP {
     }
 
     // mapping(address => User) public users;
-    mapping(bytes => User) public users_pk_view;
+    mapping(address => User) public users_pk_view;
     mapping(address => bool) public registeredUsers;
     mapping(address => ServiceProvider) public serviceProviders;
 
@@ -52,18 +52,20 @@ contract MetaAuth_OTP {
     event UserRegistered(address indexed userAddress);
     event ServiceProviderRegistered(address indexed serviceProviderAddress);
 
-    event ServiceConnected(bytes indexed publicKey, address indexed serviceProviderAddress, uint256 authorizeTime, string challenge);
-    event OTPGenerated(bytes indexed publicKey, address indexed serviceProviderAddress);
-    event OTPVerified(bytes indexed publicKey, address indexed serviceProviderAddress, bool isValid);
-    event OTPAbuse(bytes indexed publicKey, address indexed serviceProviderAddress, string abuseCode);
+    event ServiceConnected(address indexed publicKey, address indexed serviceProviderAddress, uint256 authorizeTime, string challenge);
+    event OTPGenerated(address indexed publicKey, address indexed serviceProviderAddress);
+    event OTPVerified(address indexed publicKey, address indexed serviceProviderAddress, bool isValid);
+    event OTPAbuse(address indexed publicKey, address indexed serviceProviderAddress, string abuseCode);
 
+    event LogRecovery(address publicKey);
+    event LogBytes32(bytes32 data);
 
     modifier onlyRegisteredUser() {
         require(registeredUsers[msg.sender], "User not registered");
         _;
     }
 
-    modifier onlyRegisteredUserPk(bytes memory publicKey) {
+    modifier onlyRegisteredUserPk(address publicKey) {
         require(users_pk_view[publicKey].isRegistered, "User PK not registered");
         _;
     }
@@ -78,7 +80,7 @@ contract MetaAuth_OTP {
         _;
     }
 
-    function registerUser(bytes memory publicKey, address userAddress) external onlyOwner {
+    function registerUser(address publicKey, address userAddress) external onlyOwner {
         // require(!users[msg.sender].isRegistered, "User already registered");
         require(!users_pk_view[publicKey].isRegistered, "User public key already registered");
 
@@ -93,19 +95,19 @@ contract MetaAuth_OTP {
         emit UserRegistered(msg.sender);
     }
 
-    function getServiceInfo(bytes memory publicKey, address service) public view onlyRegisteredUserPk(publicKey) onlyRegisteredUser returns (ServiceInfo memory) {
+    function getServiceInfo(address publicKey, address service) public view onlyRegisteredUserPk(publicKey) onlyRegisteredUser returns (ServiceInfo memory) {
         require(users_pk_view[publicKey].userAddress==msg.sender, "Only owner of this pk can read service info list.");        
         return users_pk_view[publicKey].serviceInfos[service];
     }
 
-    function getOTPInfo(bytes memory publicKey, address service) public view onlyRegisteredUserPk(publicKey) onlyRegisteredUser returns (OTPInfo memory) {
+    function getOTPInfo(address publicKey, address service) public view onlyRegisteredUserPk(publicKey) onlyRegisteredUser returns (OTPInfo memory) {
         require(users_pk_view[publicKey].userAddress==msg.sender, "Only owner of this pk can read OTP list.");
         return users_pk_view[publicKey].otps[service];
     }
 
 
     // Register new service provider to contract
-    function registerServiceProvider(bytes memory publicKey) external {
+    function registerServiceProvider(address publicKey) external {
         require(!serviceProviders[msg.sender].isRegistered, "Service provider already registered");
         // serviceProviders[msg.sender] = ServiceProvider(msg.sender, publicKey, true, 0, block.timestamp);
         ServiceProvider storage newServiceProvider = serviceProviders[msg.sender];
@@ -122,11 +124,33 @@ contract MetaAuth_OTP {
         serviceProviders[msg.sender].challengeExpirationTime[challenge_hash] = block.timestamp + 15 minutes;
     }
 
+
+    // Verify signature
+    function verifySignature(string memory message, bytes memory sig, address pk) public returns (bool) {
+        require(sig.length == 65, "Invalid signature length");
+
+        bytes32 messageHash = keccak256(abi.encodePacked(message));
+
+        bytes32 r; 
+        bytes32 s; 
+        uint8 v;
+        
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+
+        address recoveredSigner = ecrecover(messageHash, v, r, s);
+
+        return recoveredSigner==pk;
+    }
+
     // Register service called by user, emit event to tell service
-    function connectService(bytes memory publicKey, address serviceProviderAddress, string memory challenge, string memory signature) external 
+    function connectService(address publicKey, address serviceProviderAddress, string memory challenge, bytes memory signature) external 
     onlyOwner onlyRegisteredUserPk(publicKey) onlyRegisteredServiceProvider(serviceProviderAddress) {
         // Need user signature here to verify the connect service call
-
+        require(verifySignature(challenge, signature, publicKey), "User signature not match");
         ServiceInfo storage _serviceInfo = users_pk_view[publicKey].serviceInfos[serviceProviderAddress];
 
         require(serviceProviders[serviceProviderAddress].challengeExpirationTime[keccak256(abi.encodePacked(challenge))]>block.timestamp, "No valid opening challenge on this service");
@@ -142,7 +166,7 @@ contract MetaAuth_OTP {
 
 
     // Generate new OTP called by user
-    function generateOTP(bytes memory publicKey, address serviceProviderAddress, uint256 salt, string memory signature) public 
+    function generateOTP(address publicKey, address serviceProviderAddress, string memory salt, bytes memory signature) public 
     onlyOwner onlyRegisteredUserPk(publicKey) onlyRegisteredServiceProvider(serviceProviderAddress) {
         // require(serviceProviders[serviceProviderAddress].isRegistered, "Service provider not registered");
         require(
@@ -152,6 +176,7 @@ contract MetaAuth_OTP {
         );
 
         // Need user signature here to verify the otp generation call
+        require(verifySignature(salt, signature, publicKey), "User signature not match");
 
         OTPInfo storage otpInfo = users_pk_view[publicKey].otps[serviceProviderAddress];
 
@@ -166,7 +191,7 @@ contract MetaAuth_OTP {
     }
 
     // Verify OTP called by service provider
-    function verifyOTP(bytes memory publicKey, uint256 otp) external 
+    function verifyOTP(address publicKey, uint256 otp) external 
     onlyRegisteredUserPk(publicKey) onlyRegisteredServiceProvider(msg.sender) {
         // require(users[userAddress].isRegistered, "User not registered");
         require(
