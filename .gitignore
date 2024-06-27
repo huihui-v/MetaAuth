@@ -35,3 +35,7 @@ yarn.lock
 # Solidity coverage
 coverage/
 coverage.json
+
+
+# Contract test wallets
+test/*.json

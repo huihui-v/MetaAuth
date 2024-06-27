@@ -12,7 +12,7 @@ const Home = () => {
   const [message2,setMessage2] = useState('');
 
   useEffect(() => {
-    const doSomething = async () => {
+    const onWeb3Change = async () => {
       if (web3 && contract) {
         try {
           const accounts = await web3.eth.getAccounts();
@@ -32,11 +32,11 @@ const Home = () => {
       }
     };
 
-    doSomething();
+    onWeb3Change();
   }, [web3, contract]);
   
   const getMessage = async () => {
-    const accounts = await web3.eth.getAccounts();
+    // const accounts = await web3.eth.getAccounts();
 
     const msg = await contract.methods.message().call();
     setMessage(msg);
@@ -51,7 +51,7 @@ const Home = () => {
   }
 
   const updateMessage = async () => {
-    const accounts = await web3.eth.getAccounts();
+    // const accounts = await web3.eth.getAccounts();
     console.log(accounts)
     await contract.methods.updateMessage("New Message").send({ from: accounts[0] });
     const response = await contract.methods.message().call();

@@ -3,7 +3,9 @@
     "@metamask/detect-provider": "^2.0.0",
     "@openzeppelin/contracts": "^5.0.2",
     "elliptic": "^6.5.5",
+    "ethers": "^6.13.1",
     "https-proxy-agent": "^7.0.4",
+    "readline-sync": "^1.4.10",
     "web3": "^4.10.0"
   },
   "devDependencies": {
@@ -21,7 +23,7 @@
     "dev:client": "npm run dev --prefix metaauth_client",
     "dev:server": "npm run dev --prefix metaauth_server",
     "dev": "concurrently -c cyan,yellow \"npm run dev:client\" \"npm run dev:server\"",
-    "test": "truffle test",
+    "contract:test": "truffle test ./test/MetaAuth_OTP.test.js",
     "migrate": "truffle migrate --reset"
   }
 }
