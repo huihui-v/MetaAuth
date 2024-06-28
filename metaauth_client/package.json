@@ -3,10 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
     "@metamask/detect-provider": "^2.0.0",
+    "@mui/material": "^5.15.20",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "buffer": "^6.0.3",
+    "crypto": "^1.0.1",
+    "crypto-js": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-scripts": "5.0.1",
@@ -14,7 +20,7 @@
     "web3": "^4.10.0"
   },
   "scripts": {
-    "start": "BROWSER=none react-scripts start",
+    "start": "BROWSER=none HTTPS=true SSL_CRT_FILE=certs/server.cert SSL_KEY_FILE=certs/server.key react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
@@ -39,7 +45,14 @@
     ]
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "@babel/core": "^7.24.7",
+    "@babel/preset-env": "^7.24.7",
+    "@babel/preset-react": "^7.24.7",
+    "babel-loader": "^9.1.3",
+    "nodemon": "^3.1.4",
+    "webpack": "^5.92.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4"
   },
   "proxy": "http://172.22.173.204:5000/"
 }

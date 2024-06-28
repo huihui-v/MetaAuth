@@ -3,6 +3,7 @@ import Web3 from 'web3';
 import detectEthereumProvider from '@metamask/detect-provider';
 
 import helloworld from './contracts/helloworld.json';
+import metaauth_otp from './contracts/MetaAuth_OTP.json';
 
 const getWeb3 = () =>
   new Promise(async (resolve, reject) => {

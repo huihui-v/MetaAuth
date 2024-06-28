@@ -10,23 +10,23 @@ export const Web3Provider = ({ children }) => {
 
     useEffect(() => {
         const init = async () => {
-            try {
-              const web3 = await getWeb3();
-              setWeb3(web3.web3)
-      
-              const contractInstance = await getContractInstance(web3.web3);
-              setContract(contractInstance);
+          try {
+            const web3 = await getWeb3();
+            setWeb3(web3.web3)
+    
+            const contractInstance = await getContractInstance(web3.web3);
+            setContract(contractInstance);
 
-              if (!web3.web3||!contractInstance) {
-                return <div>Loading Web3, accounts, and contract...</div>;
-              }
-
-            } catch (error) {
-              console.error("Error initializing web3 or contract:", error);
+            if (!web3.web3||!contractInstance) {
+              return <div>Loading Web3, accounts, and contract...</div>;
             }
-          };
+
+          } catch (error) {
+            console.error("Error initializing web3 or contract:", error);
+          }
+        };
       
-          init();
+        init();
       
     }, []);
 
