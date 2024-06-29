@@ -46,11 +46,22 @@ const getWeb3 = () =>
 
 // export default getWeb3;
 
+// const getContractInstance = async(web3) => {
+//   const networkId = await web3.eth.net.getId();
+//   const deployedNetwork = helloworld.networks[networkId];
+//   const instance = new web3.eth.Contract(
+//     helloworld.abi,
+//     deployedNetwork && deployedNetwork.address,
+//   );
+
+//   return instance;
+// }
+
 const getContractInstance = async(web3) => {
   const networkId = await web3.eth.net.getId();
-  const deployedNetwork = helloworld.networks[networkId];
+  const deployedNetwork = metaauth_otp.networks[networkId];
   const instance = new web3.eth.Contract(
-    helloworld.abi,
+    metaauth_otp.abi,
     deployedNetwork && deployedNetwork.address,
   );
 

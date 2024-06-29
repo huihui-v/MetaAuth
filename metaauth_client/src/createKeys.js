@@ -3,12 +3,22 @@ import { useNavigate } from 'react-router-dom'; // 假设使用了 React Router
 import CryptoJS from 'crypto-js';
 import {dataLength, ethers} from 'ethers';
 import { Buffer } from 'buffer';
-import { Button, TextField, Container, Typography } from '@mui/material';
+import { Button, TextField, Container, Typography, Snackbar, Alert } from '@mui/material';
+import { useWeb3 } from './Web3Context';
+import axios from 'axios';
 // const { ecsign } = require("ethereumjs-util");
 
 const CreateKeysComponent = () => {
+  const { web3, contract } = useWeb3();
   const [password, setPassword] = useState('');
+  
+  const [open, setOpen] = useState(false);
+  const [alertType, setAlertType] = useState('success');
+  const [message, setMessage] = useState('');
+  
   const navigate = useNavigate();
+
+  // console.log(web3.eth.getAccounts());
 
   const generateSig = async (message, secretKey) => {
     const secretKeyBuffered = Buffer.from(secretKey.slice(2), 'hex');
@@ -54,11 +64,39 @@ const CreateKeysComponent = () => {
     return encryptedBase64;
   }
 
+  async function decryptWithAES256CBC(key, iv, encryptedBase64) {
+    // 将 key 和 iv 直接作为 Uint8Array 使用
+    const keyBuffer = await crypto.subtle.importKey(
+      "raw", 
+      key, 
+      {name:"AES-CBC"}, 
+      false, 
+      ["decrypt"]
+    );
+    const ivBuffer = iv;
+  
+    // 将 Base64 字符串转换成 ArrayBuffer
+    const encryptedArray = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+    const encryptedBuffer = encryptedArray.buffer;
+  
+    // 使用 AES-256-CBC 解密
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-CBC', iv: ivBuffer },
+        keyBuffer,
+        encryptedBuffer
+    );
+  
+    // 将解密后的 ArrayBuffer 转换成字符串
+    const decoder = new TextDecoder();
+    const decryptedMessage = decoder.decode(decrypted);
+  
+    return decryptedMessage;
+  }
+
   // 假设这里是生成钱包的函数，需要根据实际情况替换成真实的生成钱包逻辑
   const generateWallet = async () => {
     try {
       
-
       const seedString = password;
       // const encryptionKey = CryptoJS.SHA256(seedString).toString();
       const encoder = new TextEncoder();
@@ -93,13 +131,63 @@ const CreateKeysComponent = () => {
       // const sig = await generateSig("123", wallet.privateKey);
       // console.log(sig);
 
+      const accounts = await web3.eth.getAccounts();
+      console.log(accounts);
 
-      localStorage.setItem('walletInfo', JSON.stringify(walletInfo));
+      const sig = await generateSig("522", wallet.privateKey);
+      
+      // const iv_recover = new Uint8Array(walletInfo.iv.split(',').map(num=>parseInt(num, 10)));
+      // console.log(iv.toString('hex'));
+      // console.log(iv_recover);
 
-      navigate('/home', { state: { ...walletInfo, seedString: seedString }});
+      // console.log(await decryptWithAES256CBC(encryptionKey, iv_recover, encryptedPrivateKey));
+      // console.log(wallet.privateKey);
+
+      try {
+        const userData = {
+          metaauthAddress: walletInfo.address,
+          userAddress: accounts[0],
+          signature: sig
+        }
+
+        const res = await axios.post('/api/registerUser', userData, {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log(res.data);
+
+        if (res.status === 200) {
+          setAlertType('success');
+          setMessage('Generate success!');
+          localStorage.setItem('walletInfo', JSON.stringify(walletInfo));
+          navigate('/home', { state: { ...walletInfo, seedString: seedString }});
+        }
+
+        setOpen(true);
+
+      } catch (error) {
+        setAlertType('error');
+        setMessage("Unknown error: "+error.response.data.message);
+        console.error("Error: ", error);
+
+        setOpen(true);
+      }
+
+      // localStorage.setItem('walletInfo', JSON.stringify(walletInfo));
+
+      // navigate('/home', { state: { ...walletInfo, seedString: seedString }});
     } catch (error) {
       console.error('生成钱包失败：', error);
     }
+  };
+
+  const handleClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setOpen(false);
   };
 
   return (
@@ -122,6 +210,12 @@ const CreateKeysComponent = () => {
     <Typography variant="h4" component="h1" gutterBottom>
       生成身份
     </Typography>
+    <Snackbar open={open} autoHideDuration={3000} onClose={handleClose}>
+      <Alert onClose={handleClose} severity={alertType} sx={{ width: '100%' }}>
+        {message}
+      </Alert>
+    </Snackbar>
+
     <TextField 
       label="輸入密碼" 
       variant="outlined" 

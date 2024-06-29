@@ -2,35 +2,45 @@ const metaAuth_OTP = artifacts.require("MetaAuth_OTP");
 const fs = require('fs');
 const crypto = require('crypto');
 const { ethers } = require('ethers');
+const web3 = require('web3');
 const { hashPersonalMessage, keccak256, ecsign, bufferToHex, ecrecover, pubToAddress, fromRpcSig } = require('ethereumjs-util');
 
 // const EC = require("elliptic").ec;
 // const ec = new EC("secp256k1");
 
-const generateSig = (message, secretKey) => {
+// const generateSig = (message, secretKey) => {
+//     const secretKeyBuffered = Buffer.from(secretKey.slice(2), 'hex');
+//     // console.log(secretKey)
+
+//     const message_keccak = ethers.keccak256(ethers.solidityPacked(["string"], [String(message)]));    
+//     const messageBuffer = Buffer.from(message_keccak.slice(2), 'hex');
+//     console.log("messageBuffer: ", bufferToHex(messageBuffer));
+
+
+//     const { v, r, s } = ecsign(messageBuffer, secretKeyBuffered);
+//     const signature = bufferToHex(Buffer.concat([r, s, Buffer.from([v])]));
+
+//     return signature;
+// }
+
+const generateSig = async (message, secretKey) => {
     const secretKeyBuffered = Buffer.from(secretKey.slice(2), 'hex');
     // console.log(secretKey)
 
     const message_keccak = ethers.keccak256(ethers.solidityPacked(["string"], [String(message)]));    
     const messageBuffer = Buffer.from(message_keccak.slice(2), 'hex');
-    console.log("messageBuffer: ", bufferToHex(messageBuffer));
+    // console.log("messageBuffer: ", bufferToHex(messageBuffer));
 
 
-    const { v, r, s } = ecsign(messageBuffer, secretKeyBuffered);
-    const signature = bufferToHex(Buffer.concat([r, s, Buffer.from([v])]));
+    // const { v, r, s } = ecsign(messageBuffer, secretKeyBuffered);
+    // const signature = bufferToHex(Buffer.concat([r, s, Buffer.from([v])]));
+    // console.log(signature);
+    const account = new ethers.Wallet(secretKey);
+    const signature2 = await account.signMessage(messageBuffer);
+    // console.log(signature2);
 
-    return signature;
+    return signature2;
 }
-
-// const verifySig = (message, sig) => {
-//     const messageHash = hashPersonalMessage(Buffer.from(ethers.keccak256(ethers.solidityPacked(["string"], [String(message)]))));
-
-//     parsedSig = fromRpcSig(sig);
-
-//     const publicKey = ecrecover(messageHash, parsedSig.v, parsedSig.r, parsedSig.s);
-//     const address = "0x"+pubToAddress(publicKey).toString('hex');
-//     return address
-// }
 
 
 contract("MetaAuth_OTP", (accounts) => {
@@ -92,7 +102,7 @@ contract("MetaAuth_OTP", (accounts) => {
         const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKey, Buffer.from(address1WalletInfo.iv, 'hex'));
         let sk1 = decipher.update(address1WalletInfo.encryptedPrivateKey, 'hex', 'utf8');
         sk1 += decipher.final('utf8');
-        const signature = generateSig(challenge, sk1);
+        const signature = await generateSig(challenge, sk1);
         // console.log("sig: ", signature);
 
         // console.log(verifySig(challenge, signature));
@@ -125,8 +135,8 @@ contract("MetaAuth_OTP", (accounts) => {
         const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKey, Buffer.from(address1WalletInfo.iv, 'hex'));
         let sk1 = decipher.update(address1WalletInfo.encryptedPrivateKey, 'hex', 'utf8');
         sk1 += decipher.final('utf8');
-        const signature = generateSig(salt, sk1);
-        console.log(signature);
+        const signature = await generateSig(salt, sk1);
+        // console.log(signature);
 
         await instance.generateOTP(pk1, accounts[9], salt, signature, {from: accounts[0]});
 

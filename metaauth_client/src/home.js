@@ -47,7 +47,7 @@ const Home = () => {
           setAccounts(accounts);
 
           // 使用合约实例调用函数
-          const response = await contract.methods.message().call();
+          // const response = await contract.methods.message().call();
           // console.log('Contract response:', response);
 
           setMessage("<message place init>");
@@ -69,21 +69,21 @@ const Home = () => {
     setMessage(msg);
   }
 
-  const getMessageFromBackend = async () => {
-    console.log("Post getMessageFromBackend");
-    fetch('http://localhost:5000/api/hello')
-      .then(res => res.json())
-      .then(data => setMessage2(data.message))
-      .catch(err => console.error("Error fetch data: ", err));
-  }
+  // const getMessageFromBackend = async () => {
+  //   console.log("Post getMessageFromBackend");
+  //   fetch('http://localhost:5000/api/hello')
+  //     .then(res => res.json())
+  //     .then(data => setMessage2(data.message))
+  //     .catch(err => console.error("Error fetch data: ", err));
+  // }
 
-  const updateMessage = async () => {
-    // const accounts = await web3.eth.getAccounts();
-    console.log(accounts)
-    await contract.methods.updateMessage("New Message").send({ from: accounts[0] });
-    const response = await contract.methods.message().call();
-    setMessage(response);
-  };
+  // const updateMessage = async () => {
+  //   // const accounts = await web3.eth.getAccounts();
+  //   console.log(accounts)
+  //   await contract.methods.updateMessage("New Message").send({ from: accounts[0] });
+  //   const response = await contract.methods.message().call();
+  //   setMessage(response);
+  // };
 
   return (
     <div>

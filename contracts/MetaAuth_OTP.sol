@@ -59,6 +59,7 @@ contract MetaAuth_OTP {
 
     event LogRecovery(address publicKey);
     event LogBytes32(bytes32 data);
+    event LogString(string data);
 
     modifier onlyRegisteredUser() {
         require(registeredUsers[msg.sender], "User not registered");
@@ -80,9 +81,11 @@ contract MetaAuth_OTP {
         _;
     }
 
-    function registerUser(address publicKey, address userAddress) external onlyOwner {
+    function registerUser(address publicKey, address userAddress, bytes memory signature) external onlyOwner {
         // require(!users[msg.sender].isRegistered, "User already registered");
+        require(verifySignature("522", signature, publicKey), "User signature not match");
         require(!users_pk_view[publicKey].isRegistered, "User public key already registered");
+        require(!registeredUsers[userAddress], "User wallet address already registered");
 
         // User storage newUser = users[msg.sender];
         User storage newUser = users_pk_view[publicKey];
@@ -126,10 +129,33 @@ contract MetaAuth_OTP {
 
 
     // Verify signature
-    function verifySignature(string memory message, bytes memory sig, address pk) public returns (bool) {
+    // function verifySignature(string memory message, bytes memory sig, address pk) public pure returns (bool) {
+    //     require(sig.length == 65, "Invalid signature length");
+
+    //     bytes32 messageHash = keccak256(abi.encodePacked(message));
+
+    //     bytes32 r; 
+    //     bytes32 s; 
+    //     uint8 v;
+        
+    //     assembly {
+    //         r := mload(add(sig, 32))
+    //         s := mload(add(sig, 64))
+    //         v := byte(0, mload(add(sig, 96)))
+    //     }
+
+    //     address recoveredSigner = ecrecover(messageHash, v, r, s);
+
+    //     return recoveredSigner==pk;
+    // }
+    function verifySignature(string memory message, bytes memory sig, address pk) public pure returns (bool) {
         require(sig.length == 65, "Invalid signature length");
 
-        bytes32 messageHash = keccak256(abi.encodePacked(message));
+        // string memory prefix = "\x19Ethereum Signed Message:\n32";
+        bytes32 messageHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32",
+            keccak256(abi.encodePacked(message)))
+        );
 
         bytes32 r; 
         bytes32 s; 

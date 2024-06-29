@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Route, Routes, Switch, Navigate } from 'react-
 import Home from './home';
 import CreateKeysComponent from './createKeys';
 import VerifyKeysComponent from './verifyKeys';
+import ConnectServiceComponent from './connectService';
 
 const App = () => {
   // const [web3, setWeb3] = useState(null);
@@ -29,6 +30,7 @@ const App = () => {
         <Routes>
           <Route path='/verifyKeys' element={<VerifyKeysComponent />} />
           <Route path='/createKeys' element={<CreateKeysComponent />} />
+          <Route path='/connectService' element = {<ConnectServiceComponent />} />
           <Route path="/home" element={<Home />} />
           <Route path="*" element={<Navigate to="/verifyKeys" />} />
         {/* <Home /> */}
