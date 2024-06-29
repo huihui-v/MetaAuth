@@ -1,14 +1,18 @@
 // ConnectServiceComponent.js
 import React, { useState, useEffect } from 'react';
 import { Container, TextField, Button, Typography, Snackbar, Alert } from '@mui/material';
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Buffer } from 'buffer';
 import { useWeb3 } from './Web3Context';
 import axios from 'axios';
 import CryptoJS from 'crypto-js';
 import {dataLength, ethers} from 'ethers';
+import SelectInput from '@mui/material/Select/SelectInput';
 
 function ConnectServiceComponent() {
+
+  const { web3, contract } = useWeb3();
+  
   const location = useLocation();
   const [password, setPassword] = useState('');
   const [wallet, setWallet] = useState(null);
@@ -20,6 +24,8 @@ function ConnectServiceComponent() {
   const queryParams = new URLSearchParams(location.search);
   const serviceAddress = queryParams.get('serviceAddress');
   const challenge = queryParams.get('challenge');
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getWallet = async () => {
@@ -88,6 +94,10 @@ function ConnectServiceComponent() {
     return decryptedMessage;
   }
 
+  const sleep = (ms) => {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  };
+
   const verifyWallet = async () => {
     try {
       // const storedData = localStorage.getItem('walletInfo');
@@ -127,14 +137,44 @@ function ConnectServiceComponent() {
               'Content-Type': 'application/json'
             }
           });
+
+          contract.events.ServiceConnected({
+            fromBlock: '0'
+          }, (error, event) => {
+            if (error) {
+              console.error("Error listening to event ServiceProviderRegistered: ", error);
+            } else {
+              console.log("Event received: ", event);
+            }
+          })
+          .on('data', async event => {
+            console.log("Event data:", event.event, " - ", JSON.stringify(event.returnValues, (k, v) => typeof v === 'bigint'?v.toString():v));
+            const salt = ethers.keccak256(ethers.solidityPacked(["string"], [String("522")+String(Date.now())+wallet.address]));
+            const sigOTP = await generateSig(salt, private_key);
+
+            const accounts = await web3.eth.getAccounts();
+            console.log(accounts);
+
+            const userDataOTP = {
+              metaauthAddress: wallet.address,
+              serviceAddress: serviceAddress,
+              salt: salt,
+              signature: sigOTP
+            }
+            console.log(userData);
+
+            await sleep(3000);
+            
+            navigate('/home', { state: { ...wallet, seedString: seedString }});
+
+          });
+
           
-          console.log(res.data);
   
           if (res.status === 200) {
             setAlertType('success');
             setMessage('Connect success!');
             // localStorage.setItem('walletInfo', JSON.stringify(walletInfo));
-            navigate('/home', { state: { ...walletInfo, seedString: seedString }});
           }
   
           setOpen(true);

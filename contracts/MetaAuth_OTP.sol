@@ -22,6 +22,7 @@ contract MetaAuth_OTP {
         address userAddress;
         address publicKey;
         bool isRegistered;
+        address[] connectedServices;
         mapping(address => OTPInfo) otps; // Keyed by service provider address
         mapping(address => ServiceInfo) serviceInfos;
     }
@@ -96,6 +97,11 @@ contract MetaAuth_OTP {
         registeredUsers[userAddress] = true;
 
         emit UserRegistered(msg.sender);
+    }
+
+    function getConnectedServices(address publicKey) public view onlyRegisteredUserPk(publicKey) onlyRegisteredUser returns (address[] memory) {
+        require(users_pk_view[publicKey].userAddress==msg.sender, "Only owner of this pk can read connected services.");
+        return users_pk_view[publicKey].connectedServices;
     }
 
     function getServiceInfo(address publicKey, address service) public view onlyRegisteredUserPk(publicKey) onlyRegisteredUser returns (ServiceInfo memory) {
@@ -187,6 +193,16 @@ contract MetaAuth_OTP {
         _serviceInfo.authorizeTime = block.timestamp;
         _serviceInfo.expirationTime = block.timestamp + 180 days;
 
+        users_pk_view[publicKey].connectedServices.push(serviceProviderAddress);
+        
+        OTPInfo storage otpInfo = users_pk_view[publicKey].otps[serviceProviderAddress];
+
+        uint256 otp = uint256(keccak256(abi.encodePacked(block.timestamp, msg.sender, serviceProviderAddress, challenge))) % 1000000; // 6-digit OTP
+        otpInfo.otp = otp;
+        otpInfo.expirationTime = block.timestamp + 5 minutes; // OTP valid for 5 minutes
+        otpInfo.isUsed = true;
+
+        emit OTPGenerated(publicKey, serviceProviderAddress);
         emit ServiceConnected(publicKey, serviceProviderAddress, _serviceInfo.authorizeTime, challenge);
     }
 

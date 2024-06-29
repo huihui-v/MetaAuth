@@ -4,7 +4,8 @@ import InputForm from './InputForm';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom'; // 假设使用了 React Router
 import OTPComponent from './OTPComponent';
-import { Typography, Box } from '@mui/material';
+import { Typography, Box, CircularProgress } from '@mui/material';
+// import { DataProvider, useData } from './OTPDataContext';
 // import { useState } from 'react';
 
 const Home = () => {
@@ -15,59 +16,126 @@ const Home = () => {
   const [message,setMessage] = useState('');
   const [message2,setMessage2] = useState('');
 
+  const [wallet, setWallet] = useState(null);
+
+  const [OTPs, setOTPs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); 
+  const sampleOTPInfo = {
+    serviceAddress: 'test sample address',
+    otp: '123456',
+    isUsed: false,
+    expirationTime: 0
+  };
+
+  // const { data, addItem } = useData();
+
   const navigate = useNavigate();
   const location = useLocation();
 
   // console.log("In home: ", location.state);
-  const { walletInfo } = location.state;
+  // const { walletInfo } = location.state;
 
   useEffect(() => {
-    const init = async () => {
-      // walletInfo = location.state;
-      if (walletInfo === null) {
-        navigate('/verifyKeys');
+    const getWallet = async () => {
+      const storedData = localStorage.getItem('walletInfo');
+      // console.log(storedData);
+      if (storedData === null) {
+        navigate('/createKeys');
+      } else {
+        // console.log(JSON.parse(storedData));
+        setWallet(JSON.parse(storedData));
       }
-    }
-    
-    init();
+    };
+ 
+    getWallet();
   }, []);
+
+  // useEffect(() => {
+  //   const init = async () => {
+  //     // walletInfo = location.state;
+  //     if (walletInfo === null) {
+  //       navigate('/verifyKeys');
+  //     }
+  //   }
+    
+  //   init();
+  // }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       navigate('/verifyKeys', { state: {} });
-    }, 300000);
+    }, 600000);
   }, []);
 
   useEffect(() => {
     const onWeb3Change = async () => {
-      if (web3 && contract) {
+
+      setLoading(true);
+      setError(null);
+
+      if (web3 && contract && wallet) {
         try {
           const accounts = await web3.eth.getAccounts();
-          // console.log('Accounts:', accounts);
+          console.log('Accounts:', accounts);
           setAccounts(accounts);
 
-          // 使用合约实例调用函数
-          // const response = await contract.methods.message().call();
-          // console.log('Contract response:', response);
+          const user_info = await contract.methods.users_pk_view(wallet.address)
+            .call({from:accounts[0]});
 
-          setMessage("<message place init>");
-          setMessage2("<message2 place init>");
+          const connectedServices = await contract.methods.getConnectedServices(wallet.address)
+            .call({from:accounts[0]});
+
+          console.log(user_info);
+          const results = [];
+          for (const serviceAddress of connectedServices) {
+            const otpInfo = await contract.methods
+              .getOTPInfo(wallet.address, serviceAddress)
+              .call({from:accounts[0]});
+            // console.log(otpInfo);
+            results.push({...JSON.parse(JSON.stringify(otpInfo, (k, v) => typeof v === 'bigint'?v.toString():v)), serviceAddress: serviceAddress, key: serviceAddress});
+          }
+          console.log(results);
+          setOTPs(results);
 
         } catch (error) {
           console.error('Error calling contract function:', error);
+        } finally {
+          setLoading(false);
         }
       }
     };
 
     onWeb3Change();
-  }, [web3, contract]);
-  
-  const getMessage = async () => {
-    // const accounts = await web3.eth.getAccounts();
+  }, [web3, contract, wallet]);
 
-    const msg = await contract.methods.message().call();
-    setMessage(msg);
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+        <CircularProgress />
+      </Box>
+    );
   }
+
+  // useEffect(() => {
+  //   const init_services = async () => {
+  //     const accounts = await web3.eth.getAccounts();
+  //     console.log(accounts);
+
+  //     const user_info = await contract.methods.users_pk_view(wallet.address)
+  //       .call({from:accounts[0]});
+  //   };
+
+  //   init_services();
+  // }, []);
+
+  
+  // const getMessage = async () => {
+  //   // const accounts = await web3.eth.getAccounts();
+
+  //   const msg = await contract.methods.message().call();
+  //   setMessage(msg);
+  // }
 
   // const getMessageFromBackend = async () => {
   //   console.log("Post getMessageFromBackend");
@@ -85,6 +153,7 @@ const Home = () => {
   //   setMessage(response);
   // };
 
+
   return (
     <div>
         {/* <div>
@@ -101,10 +170,18 @@ const Home = () => {
       <Typography variant="h4" component="h2" gutterBottom>
         Connected services
       </Typography>
+      <Typography variant="body2" component="div">
+          {wallet.address}
+      </Typography>
       <Box border={1} borderColor="grey.300" p={2}>
-        <OTPComponent address="test address 1" otpCode="123456" />
-        <OTPComponent address="test address 2" otpCode="123456" />
-        <OTPComponent address="test address 3" otpCode="123456" />
+        <ul>
+          <OTPComponent otpInfo={sampleOTPInfo} />
+          {OTPs.map(otp => (
+              <OTPComponent otpInfo={otp} />
+          ))}
+        </ul>
+        {/* <OTPComponent address="test address 2" otpCode="123456" />
+        <OTPComponent address="test address 3" otpCode="123456" /> */}
       </Box>
     </div>
   );

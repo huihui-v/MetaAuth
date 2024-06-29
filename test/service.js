@@ -24,13 +24,13 @@ console.log(args)
 const addr = {
   7: "0x3E20bec2679F668a324B33070C9F53F0ED61466a",
   8: "0xc52Da04D9a9a75E0DFA470CAd1ec50aDcAC7D614",
-  9: "0xc52Da04D9a9a75E0DFA470CAd1ec50aDcAC7D614"
+  9: "0x17732cC96579344d86196741B1E2c28d635dc681"
 }
 
 const sk = {
   7: "0x6d33ae5c48051cf67090cd4dd1097ef0fed5c94a5dec43e9f4f5f314d892c234",
   8: "0x2a834dae2b5ef4ce66429defb3923eb03a8f30ed5539881f998ce8a6dac35889",
-  9: "0x2a834dae2b5ef4ce66429defb3923eb03a8f30ed5539881f998ce8a6dac35889"
+  9: "0x0416c8d6004667e9ccda688896877691d901ce9f54c3dd4e3f8d0fd4004da45c"
 }
 
 const auth_wallet_name = `address_${args.wallet}_wallet.json`
@@ -107,6 +107,51 @@ const openChallenge = async (account, auth_wallet_info) => {
     console.log("\n", verificationLink, "\n");
 
   } catch (error) {
+    console.log(error)
+    let errFlat = JSON.parse(JSON.stringify(error));
+    // console.error('Error:', errFlat);
+    if (errFlat.cause && errFlat.cause.message) {
+      console.error('Revert reason: ', errFlat.cause.message);
+    } else {
+      console.error("Revert reason not found in error data");
+    }
+  }
+}
+
+const verifyOTP = async (user_pk, otp) => {
+  try {
+    const res = await contract.methods.verifyOTP(user_pk, otp)
+      .send({from: account.address, gas:"1000000"});
+
+    contract.events.OTPVerified({
+      fromBlock: '0'
+    }, (error, event) => {
+      if (error) {
+        console.error("Error listening to event ServiceProviderRegistered: ", error);
+      } else {
+        console.log("Event received: ", event);
+      }
+    })
+    .on('data', event => {
+      console.log("Event data:", event.event, " - ", JSON.stringify(event.returnValues));
+    });
+
+    contract.events.OTPAbuse({
+      fromBlock: '0'
+    }, (error, event) => {
+      if (error) {
+        console.error("Error listening to event ServiceProviderRegistered: ", error);
+      } else {
+        console.log("Event received: ", event);
+      }
+    })
+    .on('data', event => {
+      console.log("Event data:", event.event, " - ", JSON.stringify(event.returnValues));
+    });
+
+
+  } catch (error) {
+    console.log(error)
     let errFlat = JSON.parse(JSON.stringify(error));
     // console.error('Error:', errFlat);
     if (errFlat.cause && errFlat.cause.message) {
@@ -133,6 +178,10 @@ if (args.mode=="register") {
 
 } else if (args.mode=="verify") {
   console.log(`Call verify for wallet ${args.wallet}`);
+
+  const userAddress = "0x1381830C9c1E161D9b952ef115d498e263D46ab3"
+  verifyOTP(userAddress, args.otp);
+
 } else {
   console.log(`Unknown mode ${args.mode}`);
 }

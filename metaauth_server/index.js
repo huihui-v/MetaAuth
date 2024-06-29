@@ -111,6 +111,40 @@ router.post('/api/connectService', async (ctx) => {
   }
 });
 
+router.post('/api/generateOTP', async (ctx) => {
+  const data = ctx.request.body;
+
+  console.log(data);
+
+  try {
+    const res = await contract.methods
+      .generateOTP(data.metaauthAddress, data.serviceAddress, data.salt, data.signature)
+      .send({from: account.address, gas: "1000000"});
+
+    ctx.body = {
+      status: 'success',
+      message: 'success call connectService'
+    };
+    
+  } catch (error) {
+    console.log(error);
+    let errFlat = JSON.parse(JSON.stringify(error));
+    // console.error('Error:', errFlat);
+    if (errFlat.cause && errFlat.cause.message) {
+      console.error('Revert reason: ', errFlat.cause.message);
+    } else {
+      console.error("Revert reason not found in error data");
+    }
+
+    ctx.status = 500;
+    ctx.body = {
+      status: 'error',
+      message: errFlat.cause.message || "No revert message from blockchain",
+      error: error
+    }
+  }
+});
+
 
 app
   .use(router.routes())

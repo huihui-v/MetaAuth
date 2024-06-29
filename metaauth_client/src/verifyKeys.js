@@ -122,6 +122,35 @@ const VerifyKeysComponent = () => {
     }
   };
 
+  async function decryptWithAES256CBC(key, iv, encryptedBase64) {
+    // 将 key 和 iv 直接作为 Uint8Array 使用
+    const keyBuffer = await crypto.subtle.importKey(
+      "raw", 
+      key, 
+      {name:"AES-CBC"}, 
+      false, 
+      ["decrypt"]
+    );
+    const ivBuffer = iv;
+  
+    // 将 Base64 字符串转换成 ArrayBuffer
+    const encryptedArray = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+    const encryptedBuffer = encryptedArray.buffer;
+  
+    // 使用 AES-256-CBC 解密
+    const decrypted = await crypto.subtle.decrypt(
+        { name: 'AES-CBC', iv: ivBuffer },
+        keyBuffer,
+        encryptedBuffer
+    );
+  
+    // 将解密后的 ArrayBuffer 转换成字符串
+    const decoder = new TextDecoder();
+    const decryptedMessage = decoder.decode(decrypted);
+  
+    return decryptedMessage;
+  }
+
   const verifyWallet = async () => {
     try {
       // const storedData = localStorage.getItem('walletInfo');
@@ -143,7 +172,8 @@ const VerifyKeysComponent = () => {
         // console.log({ ...wallet, seedString: seedString });
 
         setAlertType('success');
-        setMessage('Verification pass!');        
+        setMessage('Verification pass!');
+
         navigate('/home', { state: { ...wallet, seedString: seedString }});
 
       } else {
