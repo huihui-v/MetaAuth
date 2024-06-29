@@ -236,7 +236,7 @@ const OTPComponent = ({ otpInfo }) => {
 
       {/* 右边显示按钮 */}
       <Button variant="contained" color="primary" onClick={generateOTP} disabled={loading||timeLeft>0}>
-        更新OTP
+        Update OTP
       </Button>
 
       {loading && (

@@ -213,7 +213,7 @@ const VerifyKeysComponent = () => {
 
     <Container maxWidth="sm">
     <Typography variant="h4" component="h1" gutterBottom>
-      驗證身份
+      Please input device key to verify your identity.
     </Typography>
 
     <Snackbar open={open} autoHideDuration={3000} onClose={handleClose}>
@@ -223,7 +223,7 @@ const VerifyKeysComponent = () => {
     </Snackbar>
 
     <TextField 
-      label="輸入密碼" 
+      label="Device key" 
       variant="outlined" 
       type="password" 
       fullWidth 
@@ -237,7 +237,7 @@ const VerifyKeysComponent = () => {
       fullWidth 
       onClick={verifyWallet}
     >
-      驗證身份
+      Verify Identity
     </Button>
     </Container>
   );

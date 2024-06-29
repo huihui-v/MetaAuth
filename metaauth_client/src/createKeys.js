@@ -208,7 +208,7 @@ const CreateKeysComponent = () => {
 
     <Container maxWidth="sm">
     <Typography variant="h4" component="h1" gutterBottom>
-      生成身份
+      Please type in a new device key to generate new MetaAuth ID.
     </Typography>
     <Snackbar open={open} autoHideDuration={3000} onClose={handleClose}>
       <Alert onClose={handleClose} severity={alertType} sx={{ width: '100%' }}>
@@ -217,7 +217,7 @@ const CreateKeysComponent = () => {
     </Snackbar>
 
     <TextField 
-      label="輸入密碼" 
+      label="Type in new key" 
       variant="outlined" 
       type="password" 
       fullWidth 
@@ -231,7 +231,7 @@ const CreateKeysComponent = () => {
       fullWidth 
       onClick={generateWallet}
     >
-      生成身份
+      Generate ID
     </Button>
     </Container>
   );

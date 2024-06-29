@@ -179,7 +179,7 @@ if (args.mode=="register") {
 } else if (args.mode=="verify") {
   console.log(`Call verify for wallet ${args.wallet}`);
 
-  const userAddress = "0x1381830C9c1E161D9b952ef115d498e263D46ab3"
+  const userAddress = "0xfc617474979f420983a91ba0761fc0587c9F728D"
   verifyOTP(userAddress, args.otp);
 
 } else {

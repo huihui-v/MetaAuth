@@ -200,7 +200,7 @@ function ConnectServiceComponent() {
       setOpen(true);
 
     } catch (err) {
-      console.log('驗證身份失敗：', err);
+      console.log('Failed to verify identity：', err);
     }
   }
 
@@ -214,9 +214,12 @@ function ConnectServiceComponent() {
   return (
     <Container maxWidth="sm" style={{ marginTop: '50px', textAlign: 'center' }}>
       <Typography variant="h4" gutterBottom>
-        Connect to Service: {serviceAddress}
+        Trying to connect to Verification Service at: 
       </Typography>
       <Typography variant="body1" gutterBottom>
+        Service address: {serviceAddress}
+      </Typography>
+      <Typography variant="body2" gutterBottom>
         Challenge: {challenge}
       </Typography>
 
